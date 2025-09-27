@@ -1,4 +1,5 @@
-﻿using System.Xml.Serialization;
+﻿using System.Xml;
+using System.Xml.Serialization;
 
 namespace ModelLayer;
 
@@ -11,15 +12,9 @@ public class InstrumentStatus {
     [XmlElement(ElementName="DeviceStatus")] 
     public List<DeviceStatus> DeviceStatus { get; set; } 
 
-    [XmlAttribute(AttributeName="xsi")] 
-    public string Xsi { get; set; } 
-
-    [XmlAttribute(AttributeName="xsd")] 
-    public string Xsd { get; set; } 
-
     [XmlAttribute(AttributeName="schemaVersion")] 
-    public string SchemaVersion { get; set; } 
-
-    [XmlText] 
-    public string Text { get; set; } 
+    public string SchemaVersion { get; set; }
+    
+    [XmlIgnore]
+    public Dictionary<string, string> Namespaces { get; set; }
 }
