@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using FileParserService;
 using ModelLayer;
+using ModelLayer.DeviceStatus;
 
 string TestXmlPath = "E:\\Hobby\\InvLabTask\\Task\\status.xml";
 
@@ -14,14 +15,23 @@ try
 
     foreach (var deviceStatus in status.DeviceStatus)
     {
-        Console.WriteLine($"Device status: {deviceStatus.ModuleCategoryID}");
+        if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+        {
+            RapidControlStatus moduleStatus = FileParser.ParseRapidControlStatus(
+                PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID], deviceStatus.RapidControlStatus);
+            
+            Console.WriteLine(moduleStatus.ModuleState);
+        }
+        else
+            throw new Exception($"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"{ex.Source}: {ex.Message}");
+    Console.WriteLine("Runtime error:");
+    Console.WriteLine($"\t[{ex.Source}]: {ex.Message}");
     if (ex.InnerException != null)
     {
-        Console.WriteLine($"\t{ex.InnerException.Source}: {ex.InnerException.Message}");
+        Console.WriteLine($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
     }
 }

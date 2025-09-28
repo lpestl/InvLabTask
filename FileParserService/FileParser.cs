@@ -40,9 +40,36 @@ public class FileParser(string filePath)
         throw new Exception($"The structure inside the \"{_filePath}\" file does not match the data structure of \"InstrumentStatus\"");
     }
 
-    static public RapidControlStatus ParseRapidControlStatus(Type deviceType, string rapidControlStatusXml)
+    static public RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
     {
+        using (var stringReader = new StringReader(rapidControlStatusXml))
+        {
+            XDocument doc = XDocument.Load(stringReader);
+            var moduleSerializer = new XmlSerializer(moduleType);
+           
+            using (var reader = doc.CreateReader())
+            {
+                if (moduleSerializer.Deserialize(reader) is RapidControlStatus status)
+                {
+                    if (doc.Root != null)
+                    {
+                        status.Namespaces = new XmlSerializerNamespaces(
+                            doc.Root.Attributes()
+                                .Where(a => a.IsNamespaceDeclaration)
+                                .Select(a =>
+                                {
+                                    // xmlns="..." -> empty prefix
+                                    string prefix = a.Name.LocalName == "xmlns" ? "" : a.Name.LocalName;
+                                    return new System.Xml.XmlQualifiedName(prefix, a.Value);
+                                }).ToArray()
+                        );
+
+                        return status;
+                    }
+                }
+            }
+        }
         
-        return (RapidControlStatus)Activator.CreateInstance(deviceType, rapidControlStatusXml);
+        return Activator.CreateInstance(moduleType, rapidControlStatusXml) as RapidControlStatus;
     }
 }
