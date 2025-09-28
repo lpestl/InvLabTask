@@ -16,5 +16,5 @@ public class InstrumentStatus {
     public string SchemaVersion { get; set; }
     
     [XmlIgnore]
-    public Dictionary<string, string> Namespaces { get; set; }
+    public XmlSerializerNamespaces  Namespaces { get; set; }
 }
