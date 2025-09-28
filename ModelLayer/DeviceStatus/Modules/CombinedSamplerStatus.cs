@@ -1,25 +1,10 @@
 ﻿using System.Xml.Serialization;
 
-namespace ModelLayer;
+namespace ModelLayer.DeviceStatus.Modules;
 
 [XmlRoot(ElementName="CombinedSamplerStatus")]
-public class CombinedSamplerStatus
+public class CombinedSamplerStatus : RapidControlStatus
 {
-    [XmlElement(ElementName="ModuleState")] 
-    public ModuleState ModuleState { get; set; }
-    
-    [XmlElement(ElementName="IsBusy")] 
-    public bool IsBusy { get; set; }
-    
-    [XmlElement(ElementName="IsReady")] 
-    public bool IsReady { get; set; }
-    
-    [XmlElement(ElementName="IsError")] 
-    public bool IsError { get; set; }
-    
-    [XmlElement(ElementName="KeyLock")] 
-    public bool KeyLock { get; set; }
-    
     [XmlElement(ElementName="Status")] 
     public int Status  { get; set; }
     
@@ -43,7 +28,26 @@ public class CombinedSamplerStatus
     
     [XmlElement(ElementName="Buzzer")] 
     public bool Buzzer { get; set; }
-    
-    [XmlIgnore]
-    public XmlSerializerNamespaces  Namespaces { get; set; }
 }
+
+// Example
+// <?xml version="1.0" encoding="utf-16"?>
+// <CombinedSamplerStatus 
+//      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+//      xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+//
+//     <ModuleState>Online</ModuleState>
+//     <IsBusy>false</IsBusy>
+//     <IsReady>true</IsReady>
+//     <IsError>false</IsError>
+//     <KeyLock>false</KeyLock>
+//     <Status>0</Status>
+//     <Vial>L-A-1</Vial>
+//     <Volume>0</Volume>
+//     <MaximumInjectionVolume>0</MaximumInjectionVolume>
+//     <RackL>Tray54C</RackL>
+//     <RackR>Tray54C</RackR>
+//     <RackInf>0</RackInf>
+//     <Buzzer>true</Buzzer>
+//
+// </CombinedSamplerStatus>

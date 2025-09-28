@@ -1,6 +1,6 @@
 ﻿using System.Xml.Serialization;
 
-namespace ModelLayer;
+namespace ModelLayer.DeviceStatus;
 
 [XmlRoot(ElementName="DeviceStatus")]
 public class DeviceStatus { 

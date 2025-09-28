@@ -12,9 +12,10 @@ try
 {
     var status = parser.ParseInstrumentStatus();
 
-    Console.WriteLine($"{status.SchemaVersion}, {status.PackageID}");
-    foreach (var qn in status.Namespaces.ToArray())
-        Console.WriteLine($"ns: {qn.Name} = {qn.Namespace}");
+    foreach (var deviceStatus in status.DeviceStatus)
+    {
+        Console.WriteLine($"Device status: {deviceStatus.ModuleCategoryID}");
+    }
 }
 catch (Exception ex)
 {

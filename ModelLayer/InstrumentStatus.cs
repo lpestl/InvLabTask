@@ -10,7 +10,7 @@ public class InstrumentStatus {
     public string PackageID { get; set; } 
 
     [XmlElement(ElementName="DeviceStatus")] 
-    public List<DeviceStatus> DeviceStatus { get; set; } 
+    public List<DeviceStatus.DeviceStatus> DeviceStatus { get; set; } 
 
     [XmlAttribute(AttributeName="schemaVersion")] 
     public string SchemaVersion { get; set; }

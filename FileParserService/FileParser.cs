@@ -1,17 +1,18 @@
 ﻿using System.Xml.Linq;
 using System.Xml.Serialization;
 using ModelLayer;
+using ModelLayer.DeviceStatus;
 
 namespace FileParserService;
 
 public class FileParser(string filePath)
 {
-    private string _filePath = filePath;
+    private readonly string _filePath = filePath;
 
     public InstrumentStatus ParseInstrumentStatus()
     {
         if (!File.Exists(_filePath))
-            throw new FileNotFoundException("File not found", filePath);
+            throw new FileNotFoundException("File not found", _filePath);
         
         var doc = XDocument.Load(_filePath);
 
@@ -37,5 +38,11 @@ public class FileParser(string filePath)
         }
 
         throw new Exception($"The structure inside the \"{_filePath}\" file does not match the data structure of \"InstrumentStatus\"");
+    }
+
+    static public RapidControlStatus ParseRapidControlStatus(Type deviceType, string rapidControlStatusXml)
+    {
+        
+        return (RapidControlStatus)Activator.CreateInstance(deviceType, rapidControlStatusXml);
     }
 }
