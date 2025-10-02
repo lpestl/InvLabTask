@@ -12,5 +12,8 @@ public class DeviceStatus {
     public int IndexWithinRole { get; set; } 
 
     [XmlElement(ElementName="RapidControlStatus")] 
-    public string RapidControlStatus { get; set; } 
+    public string RapidControlStatusXmlString { get; set; } 
+    
+    [XmlIgnore]
+    public RapidControlStatus RapidControlStatus { get; set; }
 }

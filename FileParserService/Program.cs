@@ -5,25 +5,32 @@ using FileParserService;
 using ModelLayer;
 using ModelLayer.DeviceStatus;
 
-string TestXmlPath = "E:\\Hobby\\InvLabTask\\Task\\status.xml";
+string testXmlPath = "E:\\Hobby\\InvLabTask\\Task\\status.xml";
 
-var parser = new FileParser(TestXmlPath);
+var parser = new FileParser(testXmlPath);
 
 try
 {
     var status = parser.ParseInstrumentStatus();
 
-    foreach (var deviceStatus in status.DeviceStatus)
+    if (status != null)
     {
-        if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+        Console.WriteLine($"PackageId: {status.PackageID}\nDeviceStatuses: ");
+        foreach (var deviceStatus in status.DeviceStatuses)
         {
-            RapidControlStatus moduleStatus = FileParser.ParseRapidControlStatus(
-                PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID], deviceStatus.RapidControlStatus);
-            
-            Console.WriteLine(moduleStatus.ModuleState);
+            if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+            {
+                deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
+                    PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID], deviceStatus.RapidControlStatusXmlString);
+                
+                Console.WriteLine($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}\n\tModuleCategotyID: " +
+                                  $"{deviceStatus.ModuleCategoryID}\n\tRapidControlStatus:");
+                Console.WriteLine($"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
+            }
+            else
+                throw new Exception(
+                    $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
         }
-        else
-            throw new Exception($"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
     }
 }
 catch (Exception ex)
