@@ -4,7 +4,7 @@ using System.Xml.Serialization;
 using FileParserService;
 using Microsoft.Extensions.Configuration;
 using ModelLayer.DeviceStatus;
-
+using Serilog;
 
 // Read config
 var config = new ConfigurationBuilder()
@@ -12,45 +12,61 @@ var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
-string logLevel = config["AppSettings:LogLevel"];
+var settings = new AppSettings();
+config.GetSection("AppSettings").Bind(settings);
 
-Console.WriteLine($"LogLevel = {logLevel}");
+// Create and setup Logger
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(config)
+    .CreateLogger();
 
 // Create parser and pars XML
-string testXmlPath = "E:\\Hobby\\InvLabTask\\Task\\status.xml";
-
-var parser = new FileParser(testXmlPath);
-
 try
 {
-    var status = parser.ParseInstrumentStatus();
+    Log.Information("--- Starting parser process...");
+    var parser = new FileParser();
 
-    if (status != null)
+    var xmls = parser.GetXmlFiles(settings.PathToXmlDir);
+
+    foreach (var xmlFileInfo in xmls)
     {
-        Console.WriteLine($"PackageId: {status.PackageID}\nDeviceStatuses: ");
-        foreach (var deviceStatus in status.DeviceStatuses)
+        var status = parser.ParseInstrumentStatus(xmlFileInfo.FullName);
+
+        if (status != null)
         {
-            if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+            Log.Information($"PackageId: {status.PackageID}:");
+            Log.Information("DeviceStatuses: ");
+            foreach (var deviceStatus in status.DeviceStatuses)
             {
-                deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
-                    PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID], deviceStatus.RapidControlStatusXmlString);
-                
-                Console.WriteLine($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}\n\tModuleCategotyID: " +
-                                  $"{deviceStatus.ModuleCategoryID}\n\tRapidControlStatus:");
-                Console.WriteLine($"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
+                if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+                {
+                    deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
+                        PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
+                        deviceStatus.RapidControlStatusXmlString);
+
+                    Log.Information($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}");
+                    Log.Information($"\tModuleCategotyID: {deviceStatus.ModuleCategoryID}");
+                    Log.Information("\tRapidControlStatus:");
+                    Log.Information($"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
+                }
+                else
+                    throw new Exception(
+                        $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
             }
-            else
-                throw new Exception(
-                    $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
         }
     }
+    Log.Information("--- Parsing finished");
 }
 catch (Exception ex)
 {
-    Console.WriteLine("Runtime error:");
-    Console.WriteLine($"\t[{ex.Source}]: {ex.Message}");
+    Log.Error("Runtime error:");
+    Log.Error($"\t[{ex.Source}]: {ex.Message}");
     if (ex.InnerException != null)
     {
-        Console.WriteLine($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
+        Log.Error($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
     }
+}
+finally
+{
+    Log.CloseAndFlush();
 }

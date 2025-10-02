@@ -6,10 +6,8 @@ using ModelLayer.DeviceStatus;
 
 namespace FileParserService;
 
-public class FileParser(string filePath)
+public class FileParser
 {
-    private readonly string _filePath = filePath;
-
     private static T? Parse<T>(StringReader xmlReader)
     {
         var serializer = new XmlSerializer(typeof(T));
@@ -40,13 +38,22 @@ public class FileParser(string filePath)
 
         return namespaces;
     }
-    
-    public InstrumentStatus? ParseInstrumentStatus()
+
+    public List<FileInfo> GetXmlFiles(string directoryPath)
     {
-        if (!File.Exists(_filePath))
-            throw new FileNotFoundException("File not found", _filePath);
+        if (!Directory.Exists(directoryPath))
+            throw new DirectoryNotFoundException($"Directory \"{directoryPath}\" does not exist");
+
+        var xmlDir = new DirectoryInfo(directoryPath);
+        return xmlDir.GetFiles("*.xml").ToList();
+    }
+    
+    public InstrumentStatus? ParseInstrumentStatus(string filePath)
+    {
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException("File not found", filePath);
         
-        string xmlString = File.ReadAllText(_filePath);
+        string xmlString = File.ReadAllText(filePath);
         using (var xmlReader = new StringReader(xmlString))
         {
             var status = Parse<InstrumentStatus>(xmlReader);
@@ -60,7 +67,7 @@ public class FileParser(string filePath)
         }
     }
 
-    static public RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
+    public static RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
     {
         using (var stringReader = new StringReader(rapidControlStatusXml))
         {
