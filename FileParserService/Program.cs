@@ -2,9 +2,21 @@
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using FileParserService;
-using ModelLayer;
+using Microsoft.Extensions.Configuration;
 using ModelLayer.DeviceStatus;
 
+
+// Read config
+var config = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
+
+string logLevel = config["AppSettings:LogLevel"];
+
+Console.WriteLine($"LogLevel = {logLevel}");
+
+// Create parser and pars XML
 string testXmlPath = "E:\\Hobby\\InvLabTask\\Task\\status.xml";
 
 var parser = new FileParser(testXmlPath);
