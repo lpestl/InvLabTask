@@ -6,6 +6,10 @@ using Microsoft.Extensions.Configuration;
 using ModelLayer.DeviceStatus;
 using Serilog;
 
+// --- Entry point -------------------
+
+int _isRunning = 0;
+
 // Read config
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -20,53 +24,81 @@ Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(config)
     .CreateLogger();
 
-// Create parser and pars XML
-try
+// Create service endless loop
+while (!IsServiceExitRequested())
 {
-    Log.Information("--- Starting parser process...");
-    var parser = new FileParser();
+    var timer = new Timer(ServiceLoop, null, TimeSpan.Zero, TimeSpan.FromSeconds(settings.UpdateInterval));
+    Thread.Sleep(TimeSpan.FromSeconds(settings.UpdateInterval));
+}
 
-    var xmls = parser.GetXmlFiles(settings.PathToXmlDir);
+Log.CloseAndFlush();
 
-    foreach (var xmlFileInfo in xmls)
+// -----------------------------------
+
+// Dummy function for endless loop
+bool IsServiceExitRequested()
+{
+    return false;
+}
+
+// Main loop function
+void ServiceLoop(object? state)
+{
+    if (Interlocked.Exchange(ref _isRunning, 1) == 1)
     {
-        var status = parser.ParseInstrumentStatus(xmlFileInfo.FullName);
+        // already running. Skip current iteration
+        return;
+    }
+    
+    try
+    {
+        Log.Information("--- Starting parser process...");
 
-        if (status != null)
+        var xmls = FileParser.GetXmlFiles(settings.PathToXmlDir);
+
+        foreach (var xmlFileInfo in xmls)
         {
-            Log.Information($"PackageId: {status.PackageID}:");
-            Log.Information("DeviceStatuses: ");
-            foreach (var deviceStatus in status.DeviceStatuses)
-            {
-                if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
-                {
-                    deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
-                        PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
-                        deviceStatus.RapidControlStatusXmlString);
+            var parser = new FileParser();
+            var status = parser.ParseInstrumentStatus(xmlFileInfo.FullName);
 
-                    Log.Information($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}");
-                    Log.Information($"\tModuleCategotyID: {deviceStatus.ModuleCategoryID}");
-                    Log.Information("\tRapidControlStatus:");
-                    Log.Information($"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
+            if (status != null)
+            {
+                Log.Information($"PackageId: {status.PackageID}:");
+                Log.Information("DeviceStatuses: ");
+                foreach (var deviceStatus in status.DeviceStatuses)
+                {
+                    if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+                    {
+                        deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
+                            PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
+                            deviceStatus.RapidControlStatusXmlString);
+
+                        Log.Information($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}");
+                        Log.Information($"\tModuleCategotyID: {deviceStatus.ModuleCategoryID}");
+                        Log.Information("\tRapidControlStatus:");
+                        Log.Information(
+                            $"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
+                    }
+                    else
+                        throw new Exception(
+                            $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
                 }
-                else
-                    throw new Exception(
-                        $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
             }
         }
+
+        Log.Information("--- Parsing finished");
     }
-    Log.Information("--- Parsing finished");
-}
-catch (Exception ex)
-{
-    Log.Error("Runtime error:");
-    Log.Error($"\t[{ex.Source}]: {ex.Message}");
-    if (ex.InnerException != null)
+    catch (Exception ex)
     {
-        Log.Error($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
+        Log.Error("Runtime error:");
+        Log.Error($"\t[{ex.Source}]: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+            Log.Error($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
+        }
     }
-}
-finally
-{
-    Log.CloseAndFlush();
+    finally
+    {
+        Interlocked.Exchange(ref _isRunning, 0);
+    }
 }

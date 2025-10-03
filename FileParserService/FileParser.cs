@@ -39,7 +39,7 @@ public class FileParser
         return namespaces;
     }
 
-    public List<FileInfo> GetXmlFiles(string directoryPath)
+    public static List<FileInfo> GetXmlFiles(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
             throw new DirectoryNotFoundException($"Directory \"{directoryPath}\" does not exist");
