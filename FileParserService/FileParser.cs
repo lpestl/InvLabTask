@@ -3,11 +3,35 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using ModelLayer;
 using ModelLayer.DeviceStatus;
+using Serilog;
 
 namespace FileParserService;
 
 public class FileParser
 {
+    public static InstrumentStatus? ParseFile(string xmlFilePath)
+    {
+        var status = FileParser.ParseInstrumentStatus(xmlFilePath);
+
+        if (status != null)
+        {
+            foreach (var deviceStatus in status.DeviceStatuses)
+            {
+                if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
+                {
+                    deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
+                        PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
+                        deviceStatus.RapidControlStatusXmlString);
+                }
+                else
+                    throw new Exception(
+                        $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
+            }
+        }
+
+        return status;
+    }
+    
     private static T? Parse<T>(StringReader xmlReader)
     {
         var serializer = new XmlSerializer(typeof(T));
@@ -48,7 +72,7 @@ public class FileParser
         return xmlDir.GetFiles("*.xml").ToList();
     }
     
-    public InstrumentStatus? ParseInstrumentStatus(string filePath)
+    private static InstrumentStatus? ParseInstrumentStatus(string filePath)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException("File not found", filePath);
@@ -67,7 +91,7 @@ public class FileParser
         }
     }
 
-    public static RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
+    private static RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
     {
         using (var stringReader = new StringReader(rapidControlStatusXml))
         {
@@ -98,5 +122,17 @@ public class FileParser
         }
         
         return Activator.CreateInstance(moduleType, rapidControlStatusXml) as RapidControlStatus;
+    }
+
+    public static void ChangeModuleStateProperties(InstrumentStatus instrumentStatus)
+    {
+        Random rnd = new Random();
+        foreach (var deviceStatus in instrumentStatus.DeviceStatuses)
+        {
+            int value = rnd.Next(0, 4);
+            deviceStatus.RapidControlStatus.ModuleState = (ModuleState)value;
+            
+           Log.Information(deviceStatus.RapidControlStatus.ModuleState.ToString());
+        }
     }
 }

@@ -44,61 +44,60 @@ bool IsServiceExitRequested()
 // Main loop function
 void ServiceLoop(object? state)
 {
+    // Lock flag for detect already running thread
     if (Interlocked.Exchange(ref _isRunning, 1) == 1)
     {
         // already running. Skip current iteration
         return;
     }
     
+    Log.Information("--- Starting parser process...");
+
+    // Get files list in directory
+    List<FileInfo> xmls = new List<FileInfo>();
     try
     {
-        Log.Information("--- Starting parser process...");
-
-        var xmls = FileParser.GetXmlFiles(settings.PathToXmlDir);
-
-        foreach (var xmlFileInfo in xmls)
-        {
-            var parser = new FileParser();
-            var status = parser.ParseInstrumentStatus(xmlFileInfo.FullName);
-
-            if (status != null)
-            {
-                Log.Information($"PackageId: {status.PackageID}:");
-                Log.Information("DeviceStatuses: ");
-                foreach (var deviceStatus in status.DeviceStatuses)
-                {
-                    if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
-                    {
-                        deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
-                            PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
-                            deviceStatus.RapidControlStatusXmlString);
-
-                        Log.Information($"\tIndexWithinRole: {deviceStatus.IndexWithinRole}");
-                        Log.Information($"\tModuleCategotyID: {deviceStatus.ModuleCategoryID}");
-                        Log.Information("\tRapidControlStatus:");
-                        Log.Information(
-                            $"\t\t{deviceStatus.RapidControlStatus.GetType()}: {deviceStatus.RapidControlStatus.ModuleState}");
-                    }
-                    else
-                        throw new Exception(
-                            $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
-                }
-            }
-        }
-
-        Log.Information("--- Parsing finished");
+        // Get all files in path
+        xmls = FileParser.GetXmlFiles(settings.PathToXmlDir);
     }
     catch (Exception ex)
     {
-        Log.Error("Runtime error:");
-        Log.Error($"\t[{ex.Source}]: {ex.Message}");
-        if (ex.InnerException != null)
-        {
-            Log.Error($"\t\t[{ex.InnerException.Source}]: {ex.InnerException.Message}");
-        }
+        HandleException(ex);
     }
-    finally
+
+    // Create own thread for each files
+    Parallel.ForEach(xmls, xmlFileInfo =>
+        {
+            try
+            {
+                // Parse DeviceStatus
+                Log.Information("Start parse xml file \"{ObjFullName}\"", xmlFileInfo.FullName);
+                var status = FileParser.ParseFile(xmlFileInfo.FullName);
+                Log.Information("Successfully parsed \"{ObjFullName}\"", xmlFileInfo.FullName);
+                if (status != null)
+                {
+                    // Random change of ModuleState property 
+                    FileParser.ChangeModuleStateProperties(status);
+                }
+            }
+            catch (Exception e)
+            {
+                HandleException(e);
+            }
+        }
+    );
+    Log.Information("--- Parsing finished");
+    
+    // Release lock
+    Interlocked.Exchange(ref _isRunning, 0);
+}
+
+void HandleException(Exception ex)
+{
+    Log.Error("Runtime error:");
+    Log.Error("\t[{ExSource}]: {ExMessage}", ex.Source, ex.Message);
+    if (ex.InnerException != null)
     {
-        Interlocked.Exchange(ref _isRunning, 0);
+        Log.Error("\t\t[{InnerExceptionSource}]: {InnerExceptionMessage}", ex.InnerException.Source, ex.InnerException.Message);
     }
 }

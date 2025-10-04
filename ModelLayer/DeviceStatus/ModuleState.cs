@@ -2,8 +2,8 @@
 
 public enum ModuleState
 {
-    Online,
-    Run,
-    NotReady,
-    Offline
+    Online = 0,
+    Run = 1,
+    NotReady= 2,
+    Offline = 3
 }
