@@ -6,6 +6,7 @@ namespace ModelLayer.DeviceTypes;
 public class RapidControlStatus
 {
     [XmlElement(ElementName="ModuleState")] 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public ModuleState ModuleState { get; set; }
     
     [XmlElement(ElementName="IsBusy")] 

@@ -1,6 +1,8 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
 using FileParserService;
 using Microsoft.Extensions.Configuration;
+using RabbitMQ.Client;
 using Serilog;
 
 // --- Entry point -------------------
@@ -13,8 +15,11 @@ var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
-var settings = new AppSettings();
-config.GetSection("AppSettings").Bind(settings);
+var appSettings = new AppSettings();
+config.GetSection("AppSettings").Bind(appSettings);
+
+var publisherSettings = new PublisherSettings();
+config.GetSection("PublisherSettings").Bind(publisherSettings);
 
 // Create and setup Logger
 Log.Logger = new LoggerConfiguration()
@@ -24,21 +29,21 @@ Log.Logger = new LoggerConfiguration()
 // Create service endless loop
 while (!IsServiceExitRequested())
 {
-    var timer = new Timer(ServiceLoop, null, TimeSpan.Zero, TimeSpan.FromSeconds(settings.UpdateInterval));
-    Thread.Sleep(TimeSpan.FromSeconds(settings.UpdateInterval));
+    var timer = new Timer(ServiceLoop, null, TimeSpan.Zero, TimeSpan.FromSeconds(appSettings.UpdateInterval));
+    Thread.Sleep(TimeSpan.FromSeconds(appSettings.UpdateInterval));
 }
 
 Log.CloseAndFlush();
 
 // -----------------------------------
 
-// Dummy function for endless loop
+// --- Dummy function for endless loop
 bool IsServiceExitRequested()
 {
     return false;
 }
 
-// Main loop function
+// --- Main loop function
 void ServiceLoop(object? state)
 {
     // Lock flag for detect already running thread
@@ -55,7 +60,7 @@ void ServiceLoop(object? state)
     try
     {
         // Get all files in path
-        xmls = FileParser.GetXmlFiles(settings.PathToXmlDir);
+        xmls = GetXmlFiles(appSettings.PathToXmlDir);
     }
     catch (Exception ex)
     {
@@ -63,40 +68,64 @@ void ServiceLoop(object? state)
     }
 
     // Create own thread for each files
-    Parallel.ForEach(xmls, xmlFileInfo =>
-        {
-            try
-            {
-                // Parse DeviceStatus
-                Log.Information("Start parse xml file \"{ObjFullName}\"", xmlFileInfo.FullName);
-                var status = FileParser.ParseFile(xmlFileInfo.FullName);
-                Log.Information("Successfully parsed \"{ObjFullName}\"", xmlFileInfo.FullName);
-                if (status != null)
-                {
-                    // Random change of ModuleState property 
-                    FileParser.ChangeModuleStateProperties(status);
-                    // Converting data to JSON
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        TypeInfoResolver =  new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
-                    };
-                    string jsonStr = JsonSerializer.Serialize(status, status.GetType(), options);
-                    Log.Information(jsonStr);
-                }
-            }
-            catch (Exception e)
-            {
-                HandleException(e);
-            }
-        }
-    );
+    List<Task> tasks = new List<Task>();
+    foreach (var xml in xmls)
+    {
+        tasks.Add(HandleFileAsync(xml));
+    }
+    Task.WaitAll(tasks.ToArray());
+    
     Log.Information("--- Parsing finished");
     
     // Release lock
     Interlocked.Exchange(ref _isRunning, 0);
 }
 
+async Task HandleFileAsync(FileInfo xmlFileInfo)
+{
+    // Parse DeviceStatus
+    var parser = new FileParser(xmlFileInfo);
+
+    // Run async parsing 
+    await Task.Run(() =>
+    {
+        try
+        {
+            Log.Information("Start parse xml file \"{ObjFullName}\"", xmlFileInfo.FullName);
+            parser.ParseFile();
+            Log.Information("Successfully parsed \"{ObjFullName}\"", xmlFileInfo.FullName);
+        }
+        catch (Exception e)
+        {
+            HandleException(e);
+        }
+    });
+
+    if (parser.InstrumentStatus != null)
+    {
+        try
+        {
+            // Random change of ModuleState property 
+            parser.ChangeModuleStateProperties();
+            // Converting data to JSON
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            string jsonStr = JsonSerializer.Serialize(parser.InstrumentStatus,
+                parser.InstrumentStatus.GetType(), options);
+
+            // Sent to DataProcessorService using RabbitMQ
+            await SentToQueue(jsonStr);
+        }
+        catch (Exception e)
+        {
+            HandleException(e);
+        }
+    }
+}
+
+// --- Helper for handling exceptions
 void HandleException(Exception ex)
 {
     Log.Error("Runtime error:");
@@ -105,4 +134,43 @@ void HandleException(Exception ex)
     {
         Log.Error("\t\t[{InnerExceptionSource}]: {InnerExceptionMessage}", ex.InnerException.Source, ex.InnerException.Message);
     }
+}
+
+// --- Collect xml files by path
+List<FileInfo> GetXmlFiles(string directoryPath)
+{
+    if (!Directory.Exists(directoryPath))
+        throw new DirectoryNotFoundException($"Directory \"{directoryPath}\" does not exist");
+
+    var xmlDir = new DirectoryInfo(directoryPath);
+    return xmlDir.GetFiles("*.xml").ToList();
+}
+
+// -- Sending message to queue using RabbitMQ
+async Task SentToQueue(string message)
+{
+    var factory = new ConnectionFactory()
+    {
+        HostName = publisherSettings.HostName
+    };
+    
+    using var connection = await factory.CreateConnectionAsync();
+    using var channel = await connection.CreateChannelAsync();
+    
+    // Create a queue (if it doesn't exist)
+    await channel.QueueDeclareAsync(
+        queue: publisherSettings.QueueName,
+        durable: false,
+        exclusive: false,
+        autoDelete: false,
+        arguments: null);
+    
+    var messageBody = Encoding.UTF8.GetBytes(message);
+    
+    await channel.BasicPublishAsync(
+        exchange: "",
+        routingKey: publisherSettings.QueueName,
+        body: messageBody);
+    
+    Log.Information("Sent JSON message to queue: \n{ObjFullName}", message);
 }

@@ -3,36 +3,65 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using ModelLayer;
 using ModelLayer.DeviceTypes;
-using Serilog;
 
 namespace FileParserService;
 
 public class FileParser
 {
-    public static InstrumentStatus? ParseFile(string xmlFilePath)
+    private readonly FileInfo _xmlFileInfo;
+    public InstrumentStatus? InstrumentStatus { get; set; }
+    public FileParser(FileInfo xmlFileInfo)
     {
-        var status = FileParser.ParseInstrumentStatus(xmlFilePath);
+        _xmlFileInfo = xmlFileInfo;
+    }
+    
+    #region ~ Public methods ~
 
-        if (status != null)
+    public InstrumentStatus ParseFile()
+    {
+        if (_xmlFileInfo == null)
+            throw new Exception("The xml file could not be parsed. Xml File is null.");
+
+        if (!_xmlFileInfo.Exists)
+            throw new Exception("The xml file could not be parsed. Xml File is not exist.");
+        
+        var status = ParseInstrumentStatus(_xmlFileInfo.FullName);
+
+        foreach (var deviceStatus in status.DeviceStatus)
         {
-            foreach (var deviceStatus in status.DeviceStatus)
+            if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
             {
-                if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
-                {
-                    deviceStatus.RapidControlStatus = FileParser.ParseRapidControlStatus(
-                        PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
-                        deviceStatus.RapidControlStatusXmlString);
-                }
-                else
-                    throw new Exception(
-                        $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
+                deviceStatus.RapidControlStatus = ParseRapidControlStatus(
+                    PredefinedData.ModuleNameToType[deviceStatus.ModuleCategoryID],
+                    deviceStatus.RapidControlStatusXmlString);
             }
+            else
+                throw new Exception(
+                    $"Predefined type for ModuleCategoryID \"{deviceStatus.ModuleCategoryID}\" not found");
         }
-
+        
+        InstrumentStatus = status;
         return status;
     }
     
-    private static T? Parse<T>(StringReader xmlReader)
+    public void ChangeModuleStateProperties()
+    {
+        if (InstrumentStatus == null)
+            throw new Exception("The instrument status could not be parsed. InstrumentStatus is null.");
+        
+        Random rnd = new Random();
+        foreach (var deviceStatus in InstrumentStatus.DeviceStatus)
+        {
+            int value = rnd.Next(0, 4);
+            deviceStatus.RapidControlStatus.ModuleState = (ModuleState)value;
+        }
+    }
+    
+    #endregion
+    
+    #region ~ Inner logic ~
+    
+    private T Parse<T>(StringReader xmlReader)
     {
         var serializer = new XmlSerializer(typeof(T));
         if (serializer.Deserialize(xmlReader) is T data)
@@ -40,10 +69,11 @@ public class FileParser
             return data;
         }
         
-        return default;
+        //return default;
+        throw new Exception("Xml File is not of type " + typeof(T).Name);
     }
 
-    private static Dictionary<string, string> GetNamespaces(string xmlString)
+    private Dictionary<string, string> GetNamespaces(string xmlString)
     {
         var namespaces = new Dictionary<string, string>();
         using var xmlStringReader = new StringReader(xmlString);
@@ -63,35 +93,18 @@ public class FileParser
         return namespaces;
     }
 
-    public static List<FileInfo> GetXmlFiles(string directoryPath)
+    private InstrumentStatus ParseInstrumentStatus(string filePath)
     {
-        if (!Directory.Exists(directoryPath))
-            throw new DirectoryNotFoundException($"Directory \"{directoryPath}\" does not exist");
-
-        var xmlDir = new DirectoryInfo(directoryPath);
-        return xmlDir.GetFiles("*.xml").ToList();
-    }
-    
-    private static InstrumentStatus? ParseInstrumentStatus(string filePath)
-    {
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException("File not found", filePath);
-        
         string xmlString = File.ReadAllText(filePath);
         using (var xmlReader = new StringReader(xmlString))
         {
             var status = Parse<InstrumentStatus>(xmlReader);
-
-            if (status != null)
-            {
-                status.Namespaces = GetNamespaces(xmlString);
-            }
-            
+            status.Namespaces = GetNamespaces(xmlString);
             return status;
         }
     }
 
-    private static RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
+    private RapidControlStatus ParseRapidControlStatus(Type moduleType, string rapidControlStatusXml)
     {
         using (var stringReader = new StringReader(rapidControlStatusXml))
         {
@@ -111,7 +124,7 @@ public class FileParser
                                 {
                                     // xmlns="..." -> empty prefix
                                     string prefix = a.Name.LocalName == "xmlns" ? "" : a.Name.LocalName;
-                                    return new System.Xml.XmlQualifiedName(prefix, a.Value);
+                                    return new XmlQualifiedName(prefix, a.Value);
                                 }).ToArray()
                         );
 
@@ -120,17 +133,10 @@ public class FileParser
                 }
             }
         }
-        
-        return Activator.CreateInstance(moduleType, rapidControlStatusXml) as RapidControlStatus;
-    }
 
-    public static void ChangeModuleStateProperties(InstrumentStatus instrumentStatus)
-    {
-        Random rnd = new Random();
-        foreach (var deviceStatus in instrumentStatus.DeviceStatus)
-        {
-            int value = rnd.Next(0, 4);
-            deviceStatus.RapidControlStatus.ModuleState = (ModuleState)value;
-        }
+        //return default;
+        throw new InvalidOperationException();
     }
+    
+    #endregion
 }
