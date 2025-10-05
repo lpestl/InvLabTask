@@ -153,7 +153,9 @@ async Task SentToQueue(string message)
 {
     var factory = new ConnectionFactory()
     {
-        HostName = publisherSettings.HostName
+        HostName = publisherSettings.HostName,
+        UserName = publisherSettings.UserName,
+        Password = publisherSettings.Password
     };
     
     using var connection = await factory.CreateConnectionAsync();

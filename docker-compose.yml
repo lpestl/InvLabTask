@@ -22,6 +22,8 @@ services:
       - rabbitmq
     environment:
       - DOTNET_ENVIRONMENT=Docker
+    volumes:
+      - ./input_files:/app/input_files
     restart: on-failure
 
 volumes:
