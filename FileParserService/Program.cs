@@ -10,9 +10,11 @@ using Serilog;
 int _isRunning = 0;
 
 // Read config
+var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{environment}.json", optional: true)
     .Build();
 
 var appSettings = new AppSettings();

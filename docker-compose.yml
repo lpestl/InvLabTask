@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # port for connection RabbitMQ
+      - "15672:15672"    # port for web-interface
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  fileparser:
+    build:
+      context: .
+      dockerfile: FileParserService/Dockerfile
+    container_name: fileparser
+    depends_on:
+      - rabbitmq
+    environment:
+      - DOTNET_ENVIRONMENT=Docker
+    restart: on-failure
+
+volumes:
+  rabbitmq_data:
