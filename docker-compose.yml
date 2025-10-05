@@ -26,5 +26,16 @@ services:
       - ./input_files:/app/input_files
     restart: on-failure
 
+  data-processor:
+    build:
+      context: .
+      dockerfile: DataProcessorService/Dockerfile
+    container_name: data-processor
+    depends_on:
+      - rabbitmq
+    environment:
+      - DOTNET_ENVIRONMENT=Docker
+    restart: on-failure
+
 volumes:
   rabbitmq_data:

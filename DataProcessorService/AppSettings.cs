@@ -1,12 +1,11 @@
-﻿namespace FileParserService;
+﻿namespace DataProcessorService;
 
 public class AppSettings
 {
-    public string PathToXmlDir { get; set; }
     public float UpdateInterval { get; set; }
 }
 
-public class PublisherSettings
+public class ReceiverSettings
 {
     public string HostName { get; set; }
     public int Port { get; set; }

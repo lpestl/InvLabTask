@@ -29,10 +29,10 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 // Create service endless loop
+var timer = new Timer(ServiceLoop, null, TimeSpan.Zero, TimeSpan.FromSeconds(appSettings.UpdateInterval));
 while (!IsServiceExitRequested())
 {
-    var timer = new Timer(ServiceLoop, null, TimeSpan.Zero, TimeSpan.FromSeconds(appSettings.UpdateInterval));
-    Thread.Sleep(TimeSpan.FromSeconds(appSettings.UpdateInterval));
+    // Update tick
 }
 
 Log.CloseAndFlush();
@@ -42,7 +42,7 @@ Log.CloseAndFlush();
 // --- Dummy function for endless loop
 bool IsServiceExitRequested()
 {
-    return false;
+    return timer == null;
 }
 
 // --- Main loop function
@@ -151,11 +151,13 @@ List<FileInfo> GetXmlFiles(string directoryPath)
 // -- Sending message to queue using RabbitMQ
 async Task SentToQueue(string message)
 {
+    // Connect to RabbitMQ
     var factory = new ConnectionFactory()
     {
         HostName = publisherSettings.HostName,
+        Port = publisherSettings.Port,
         UserName = publisherSettings.UserName,
-        Password = publisherSettings.Password
+        Password = publisherSettings.Password,
     };
     
     using var connection = await factory.CreateConnectionAsync();
@@ -176,5 +178,5 @@ async Task SentToQueue(string message)
         routingKey: publisherSettings.QueueName,
         body: messageBody);
     
-    Log.Information("Sent JSON message to queue: \n{ObjFullName}", message);
+    Log.Information("Sent JSON message to queue");
 }
