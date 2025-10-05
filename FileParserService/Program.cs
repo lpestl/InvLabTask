@@ -1,9 +1,6 @@
-﻿using System.Text;
-using System.Xml.Linq;
-using System.Xml.Serialization;
+﻿using System.Text.Json;
 using FileParserService;
 using Microsoft.Extensions.Configuration;
-using ModelLayer.DeviceStatus;
 using Serilog;
 
 // --- Entry point -------------------
@@ -78,6 +75,14 @@ void ServiceLoop(object? state)
                 {
                     // Random change of ModuleState property 
                     FileParser.ChangeModuleStateProperties(status);
+                    // Converting data to JSON
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        TypeInfoResolver =  new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
+                    };
+                    string jsonStr = JsonSerializer.Serialize(status, status.GetType(), options);
+                    Log.Information(jsonStr);
                 }
             }
             catch (Exception e)

@@ -1,6 +1,6 @@
 ﻿using System.Xml.Serialization;
 
-namespace ModelLayer.DeviceStatus.Modules;
+namespace ModelLayer.DeviceTypes.Modules;
 
 [XmlRoot(ElementName="CombinedPumpStatus")]
 public class CombinedPumpStatus : RapidControlStatus

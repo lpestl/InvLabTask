@@ -1,6 +1,6 @@
-﻿using ModelLayer.DeviceStatus.Modules;
+﻿using ModelLayer.DeviceTypes.Modules;
 
-namespace ModelLayer.DeviceStatus;
+namespace ModelLayer.DeviceTypes;
 
 public static class PredefinedData
 {

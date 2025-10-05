@@ -1,6 +1,7 @@
-﻿using System.Xml.Serialization;
+﻿using System.Text.Json.Serialization;
+using System.Xml.Serialization;
 
-namespace ModelLayer.DeviceStatus;
+namespace ModelLayer.DeviceTypes;
 
 public class RapidControlStatus
 {
@@ -20,5 +21,6 @@ public class RapidControlStatus
     public bool KeyLock { get; set; }
     
     [XmlIgnore]
+    [JsonIgnore]
     public XmlSerializerNamespaces Namespaces { get; set; }
 }

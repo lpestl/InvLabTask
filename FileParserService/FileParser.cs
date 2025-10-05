@@ -2,7 +2,7 @@
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using ModelLayer;
-using ModelLayer.DeviceStatus;
+using ModelLayer.DeviceTypes;
 using Serilog;
 
 namespace FileParserService;
@@ -15,7 +15,7 @@ public class FileParser
 
         if (status != null)
         {
-            foreach (var deviceStatus in status.DeviceStatuses)
+            foreach (var deviceStatus in status.DeviceStatus)
             {
                 if (PredefinedData.ModuleNameToType.ContainsKey(deviceStatus.ModuleCategoryID))
                 {
@@ -127,12 +127,10 @@ public class FileParser
     public static void ChangeModuleStateProperties(InstrumentStatus instrumentStatus)
     {
         Random rnd = new Random();
-        foreach (var deviceStatus in instrumentStatus.DeviceStatuses)
+        foreach (var deviceStatus in instrumentStatus.DeviceStatus)
         {
             int value = rnd.Next(0, 4);
             deviceStatus.RapidControlStatus.ModuleState = (ModuleState)value;
-            
-           Log.Information(deviceStatus.RapidControlStatus.ModuleState.ToString());
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace ModelLayer.DeviceStatus;
+﻿namespace ModelLayer.DeviceTypes;
 
 public enum ModuleState
 {

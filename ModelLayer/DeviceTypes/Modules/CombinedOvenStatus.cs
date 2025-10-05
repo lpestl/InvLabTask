@@ -1,6 +1,6 @@
 ﻿using System.Xml.Serialization;
 
-namespace ModelLayer.DeviceStatus.Modules;
+namespace ModelLayer.DeviceTypes.Modules;
 
 [XmlRoot(ElementName="CombinedOvenStatus")]
 public class CombinedOvenStatus : RapidControlStatus

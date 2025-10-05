@@ -1,6 +1,6 @@
 ﻿using System.Xml.Serialization;
 
-namespace ModelLayer.DeviceStatus.Modules;
+namespace ModelLayer.DeviceTypes.Modules;
 
 [XmlRoot(ElementName="CombinedSamplerStatus")]
 public class CombinedSamplerStatus : RapidControlStatus

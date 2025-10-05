@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Text.Json.Serialization;
 using System.Xml.Serialization;
 
 namespace ModelLayer;
@@ -10,11 +10,12 @@ public class InstrumentStatus {
     public string PackageID { get; set; } 
 
     [XmlElement(ElementName="DeviceStatus")] 
-    public List<DeviceStatus.DeviceStatus> DeviceStatuses { get; set; } 
+    public List<DeviceTypes.DeviceStatus> DeviceStatus { get; set; } 
 
     [XmlAttribute(AttributeName="schemaVersion")] 
     public string SchemaVersion { get; set; }
     
     [XmlIgnore]
+    [JsonIgnore]
     public Dictionary<string, string> Namespaces { get; set; }
 }
