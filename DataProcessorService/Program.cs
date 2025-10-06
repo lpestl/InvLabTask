@@ -39,10 +39,15 @@ Log.Information("--- Starting data process...");
 
 while (!IsServiceExitRequested())
 {
+#if DEBUG
+    await ScanDebugCacheDir();
+    Thread.Sleep(TimeSpan.FromSeconds(appSettings.UpdateInterval));
+    Log.Information("- Rescan the cache folder");
+#else
     await ConnectToRabbitMQ();
-    
     Thread.Sleep(TimeSpan.FromSeconds(appSettings.UpdateInterval));
     Log.Warning("- Reconnect to RabbitMQ");
+#endif
 }
 
 Log.Information("--- Data processing finished");
@@ -130,6 +135,44 @@ async Task ConnectToRabbitMQ()
         HandleException(ex);
     }
 }
+
+// --- Scan cache directory for json files
+async Task ScanDebugCacheDir()
+{
+    var cachePath = Path.Combine(appSettings.PathToDatabaseDir, "..", "cache");
+    var cacheDir = new DirectoryInfo(cachePath);
+    if (!cacheDir.Exists)
+    {
+        Log.Error("Cache directory not found: {CachePath}", cacheDir.FullName);
+        return;
+    }
+
+    var jsonFiles = cacheDir.GetFiles("*.json", SearchOption.TopDirectoryOnly);
+    foreach (var file in jsonFiles)
+    {
+        try
+        {
+            var jsonContent = await File.ReadAllTextAsync(file.FullName);
+            Log.Information("Json read \"{FileFullName}\"", file.FullName);
+            
+            // Deserialize as InstrumentStatus
+            var data = JsonSerializer.Deserialize<InstrumentStatus>(jsonContent);
+
+            if (data != null)
+            {
+                Console.WriteLine($"Deserialized data: {data.PackageID}");
+                // TODO:
+            }
+            
+            file.Delete();
+        }
+        catch (Exception ex)
+        {
+            HandleException(ex);
+        }
+    }
+}
+
 
 // --- Helper for handling exceptions
 void HandleException(Exception ex)

@@ -23,7 +23,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Docker
     volumes:
-      - ./input_files:/app/input_files
+      - ./input:/app/input
     restart: on-failure
 
   data-processor:
@@ -35,6 +35,8 @@ services:
       - rabbitmq
     environment:
       - DOTNET_ENVIRONMENT=Docker
+    volumes:
+      - ./output:/app/output
     restart: on-failure
 
 volumes:

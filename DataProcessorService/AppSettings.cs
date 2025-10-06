@@ -2,6 +2,7 @@
 
 public class AppSettings
 {
+    public string PathToDatabaseDir { get; set; }
     public float UpdateInterval { get; set; }
 }
 
