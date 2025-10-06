@@ -18,4 +18,5 @@ public class ReceiverSettings
 public class DatabaseSettings
 {
     public string ConnectionString { get; set; }
+    public string DatabaseFileName { get; set; }
 }

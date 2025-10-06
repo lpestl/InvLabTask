@@ -37,7 +37,7 @@ public class DataProcessor : IDisposable
     /// <summary>
     /// Add or Update new data record
     /// </summary>
-    public void WriteData(string moduleCategoryId, string moduleState)
+    public int WriteData(string moduleCategoryId, string moduleState)
     {
         if (_connection == null)
             throw new InvalidOperationException("The database connection is not initialized. Call Init()");
@@ -51,7 +51,8 @@ public class DataProcessor : IDisposable
         ";
         cmd.Parameters.AddWithValue("$id", moduleCategoryId);
         cmd.Parameters.AddWithValue("$state", moduleState);
-        cmd.ExecuteNonQuery();
+        
+        return cmd.ExecuteNonQuery();
     }
 
     public void Dispose()

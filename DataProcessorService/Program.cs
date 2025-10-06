@@ -37,6 +37,12 @@ Log.Logger = new LoggerConfiguration()
 // Create service endless loop
 Log.Information("--- Starting data process...");
 
+// Create data processor and connect to DB
+var dbFileName = Path.GetFullPath(Path.Combine(appSettings.PathToDatabaseDir, dbSettings.DatabaseFileName));
+var connectionString = string.Format(dbSettings.ConnectionString, dbFileName);
+var dataProcessor = new DataProcessor(connectionString);
+dataProcessor.Init();
+
 while (!IsServiceExitRequested())
 {
 #if DEBUG
@@ -77,7 +83,7 @@ async Task ReceivedMessageAsync(object sender, BasicDeliverEventArgs eventArgs)
         if (data != null)
         {
             Console.WriteLine($"Deserialized data: {data.PackageID}");
-            // TODO:
+            ProcessData(data);
         }
     }
     catch (Exception ex)
@@ -161,7 +167,7 @@ async Task ScanDebugCacheDir()
             if (data != null)
             {
                 Console.WriteLine($"Deserialized data: {data.PackageID}");
-                // TODO:
+                ProcessData(data);
             }
             
             file.Delete();
@@ -173,6 +179,18 @@ async Task ScanDebugCacheDir()
     }
 }
 
+// --- Process data and write it to database
+void ProcessData(InstrumentStatus data)
+{
+    foreach (var dataDeviceStatus in data.DeviceStatus)
+    {
+        if (dataProcessor.WriteData(dataDeviceStatus.ModuleCategoryID,
+                dataDeviceStatus.RapidControlStatus.ModuleState.ToString()) > 0)
+        {
+            Log.Information("Database's data updated: {DataDeviceStatus}, {State}", dataDeviceStatus.ModuleCategoryID, dataDeviceStatus.RapidControlStatus.ModuleState);
+        }
+    }
+}
 
 // --- Helper for handling exceptions
 void HandleException(Exception ex)
