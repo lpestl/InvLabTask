@@ -26,6 +26,9 @@ config.GetSection("AppSettings").Bind(appSettings);
 var receiverSettings = new ReceiverSettings();
 config.GetSection("ReceiverSettings").Bind(receiverSettings);
 
+var dbSettings = new DatabaseSettings();
+config.GetSection("DatabaseSettings").Bind(dbSettings);
+
 // Create and setup Logger
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(config)
@@ -68,7 +71,7 @@ async Task ReceivedMessageAsync(object sender, BasicDeliverEventArgs eventArgs)
 
         if (data != null)
         {
-            Console.WriteLine($"Deserialized data: {data.PackageID}, SchemaVersion: {data.SchemaVersion}");
+            Console.WriteLine($"Deserialized data: {data.PackageID}");
             // TODO:
         }
     }

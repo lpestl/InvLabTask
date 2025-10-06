@@ -116,9 +116,13 @@ async Task HandleFileAsync(FileInfo xmlFileInfo)
             };
             string jsonStr = JsonSerializer.Serialize(parser.InstrumentStatus,
                 parser.InstrumentStatus.GetType(), options);
-
+#if DEBUG
+            // Save json to debug cache directory
+            await SaveToChache(jsonStr);
+#else
             // Sent to DataProcessorService using RabbitMQ
             await SentToQueue(jsonStr);
+#endif
         }
         catch (Exception e)
         {
@@ -180,3 +184,19 @@ async Task SentToQueue(string message)
     
     Log.Information("Sent JSON message to queue");
 }
+
+// --- Save json to cache directory
+// NOTE: Only for Debug mode
+async Task SaveToChache(string jsonContent)
+{
+    var cacheDir = Path.Combine(appSettings.PathToXmlDir, "..",  "cache");
+    
+    if (!Directory.Exists(cacheDir))
+        Directory.CreateDirectory(cacheDir);
+
+    var jsonFileName = Path.Combine(cacheDir, DateTime.Now.ToString("yyyyMMddHHmmss") + ".json");
+    var fileInfo = new FileInfo(jsonFileName);
+    await File.WriteAllTextAsync(fileInfo.FullName, jsonContent);
+    
+    Log.Information("Chached file saved to \"{JsonFile}\"", fileInfo.FullName);
+} 
